@@ -95,7 +95,7 @@ app.add_middleware(
         "http://127.0.0.1:3000",
 
         #YOUR VERCEL WEBSITE
-        "https://medical-rag-assistant-zduo.onrender.com"
+        "https://medical-rag-assistant-d3ca.onrender.com"
     ],
 
     allow_credentials=True,
