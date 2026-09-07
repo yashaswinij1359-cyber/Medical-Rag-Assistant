@@ -2,6 +2,8 @@
 
 «An AI-powered RAG-based assistant for searching and understanding medical research documents.»
 
+Live demo: https://medical-rag-assistant-zeta.vercel.app
+
 📌 Overview
 
 MediRAG is a Medical Research Knowledge Assistant built using Retrieval-Augmented Generation (RAG).
