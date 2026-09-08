@@ -1,8 +1,10 @@
 fastapi
-uvicorn[standard]
+uvicorn
 python-multipart
+pymupdf
+pypdf
 python-dotenv
 google-genai
+faiss-cpu
+numpy
 httpx
-pypdf
-PyMuPDF
