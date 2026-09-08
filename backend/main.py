@@ -25,7 +25,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # You can change this in .env if required.
 GEMINI_MODEL = os.getenv(
     "GEMINI_MODEL",
-    "gemini-3.7-flash"
+    "gemini-3.6-flash"
 )
 
 
@@ -95,7 +95,7 @@ app.add_middleware(
         "http://127.0.0.1:3000",
 
         #YOUR VERCEL WEBSITE
-        "https://medical-rag-assistant-d3ca.onrender.com"
+        "https://medical-rag-assistant-jwoq.onrender.com"
     ],
 
     allow_credentials=True,
