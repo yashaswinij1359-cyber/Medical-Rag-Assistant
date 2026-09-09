@@ -984,5 +984,5 @@ async def startup_event():
     print(
         "CORS frontend:",
         "https://medical-rag-assistant-green.vercel.app"
-    )
+
     print("=" * 60)
