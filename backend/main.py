@@ -93,7 +93,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "medical-rag-assistant-mu.vercel.app",
+        "https://medical-rag-assistant-bw0w644ru-yashaswinij1359-cybers-projects.vercel.app",
         "http://localhost:3000",
         "http://localhost:5173",
     ],
