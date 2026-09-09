@@ -1,7 +1,6 @@
 import os
 import shutil
 from pathlib import Path
-from typing import List
 
 import httpx
 from dotenv import load_dotenv
@@ -21,8 +20,6 @@ load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Use a stable Gemini model.
-# You can change this in .env if required.
 GEMINI_MODEL = os.getenv(
     "GEMINI_MODEL",
     "gemini-3.6-flash"
@@ -40,7 +37,6 @@ if GEMINI_API_KEY:
         client = genai.Client(
             api_key=GEMINI_API_KEY
         )
-
         print("Gemini client initialized.")
 
     except Exception as e:
@@ -57,7 +53,6 @@ else:
 BASE_DIR = Path(__file__).resolve().parent
 
 UPLOAD_DIR = BASE_DIR / "uploads"
-
 PAPER_DIR = BASE_DIR / "uploaded_papers"
 
 UPLOAD_DIR.mkdir(
@@ -85,22 +80,26 @@ app = FastAPI(
 # CORS
 # ============================================================
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI()
-
 app.add_middleware(
     CORSMiddleware,
+
     allow_origins=[
-        "https://medical-rag-assistant-bw0w644ru-yashaswinij1359-cybers-projects.vercel.app",
+        "https://medical-rag-assistant-green.vercel.app",
+
+        # Local development
         "http://localhost:3000",
         "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
     ],
+
     allow_credentials=True,
+
     allow_methods=["*"],
+
     allow_headers=["*"],
 )
+
 
 # ============================================================
 # REQUEST MODELS
@@ -166,6 +165,7 @@ def extract_pdf_text(pdf_path: Path) -> str:
                     text = text.strip()
 
                     if text:
+
                         pages_text.append(
                             f"\n--- Page {page_number} ---\n"
                             f"{text}"
@@ -235,7 +235,6 @@ def get_all_paper_text() -> str:
     )
 
     if not text_files:
-
         return ""
 
     all_papers = []
@@ -293,7 +292,7 @@ async def upload_file(
         )
 
     # --------------------------------------------------------
-    # Check PDF
+    # CHECK PDF
     # --------------------------------------------------------
 
     if not file.filename.lower().endswith(".pdf"):
@@ -304,7 +303,7 @@ async def upload_file(
         )
 
     # --------------------------------------------------------
-    # Safe filename
+    # SAFE FILENAME
     # --------------------------------------------------------
 
     safe_filename = Path(
@@ -319,7 +318,7 @@ async def upload_file(
     try:
 
         # ----------------------------------------------------
-        # Save PDF
+        # SAVE PDF
         # ----------------------------------------------------
 
         with open(
@@ -337,7 +336,7 @@ async def upload_file(
         )
 
         # ----------------------------------------------------
-        # Extract text
+        # EXTRACT TEXT
         # ----------------------------------------------------
 
         extracted_text = extract_pdf_text(
@@ -346,7 +345,6 @@ async def upload_file(
 
         if not extracted_text:
 
-            # Delete unusable file
             try:
                 pdf_path.unlink()
             except Exception:
@@ -362,7 +360,7 @@ async def upload_file(
             )
 
         # ----------------------------------------------------
-        # Save extracted text
+        # SAVE EXTRACTED TEXT
         # ----------------------------------------------------
 
         text_path = save_paper_text(
@@ -375,7 +373,7 @@ async def upload_file(
         )
 
         # ----------------------------------------------------
-        # Count words
+        # COUNT WORDS
         # ----------------------------------------------------
 
         word_count = len(
@@ -450,6 +448,25 @@ def get_uploaded_papers():
             )
         )
 
+        word_count = 0
+
+        if text_file.exists():
+
+            try:
+
+                word_count = len(
+                    text_file.read_text(
+                        encoding="utf-8"
+                    ).split()
+                )
+
+            except Exception as e:
+
+                print(
+                    f"Could not read {text_file}:",
+                    e
+                )
+
         papers.append({
 
             "filename": pdf_file.name,
@@ -458,15 +475,7 @@ def get_uploaded_papers():
 
             "processed": text_file.exists(),
 
-            "word_count": (
-                len(
-                    text_file.read_text(
-                        encoding="utf-8"
-                    ).split()
-                )
-                if text_file.exists()
-                else 0
-            )
+            "word_count": word_count
         })
 
     return {
@@ -507,7 +516,7 @@ async def research_search(
         ) as http:
 
             # ------------------------------------------------
-            # PubMed search
+            # PUBMED SEARCH
             # ------------------------------------------------
 
             search_url = (
@@ -555,7 +564,7 @@ async def research_search(
                 }
 
             # ------------------------------------------------
-            # Get summaries
+            # GET ARTICLE SUMMARIES
             # ------------------------------------------------
 
             summary_url = (
@@ -619,6 +628,7 @@ async def research_search(
                     ),
 
                     "authors": [
+
                         author.get(
                             "name",
                             ""
@@ -644,6 +654,21 @@ async def research_search(
 
                 "results": results
             }
+
+    except httpx.HTTPError as e:
+
+        print(
+            "PubMed HTTP error:",
+            e
+        )
+
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "PubMed could not be reached. "
+                "Please try again."
+            )
+        )
 
     except Exception as e:
 
@@ -679,7 +704,7 @@ async def assistant(
         )
 
     # --------------------------------------------------------
-    # Check Gemini
+    # CHECK GEMINI
     # --------------------------------------------------------
 
     if client is None:
@@ -688,12 +713,12 @@ async def assistant(
             status_code=500,
             detail=(
                 "Gemini API is not configured. "
-                "Check GEMINI_API_KEY in your .env file."
+                "Check GEMINI_API_KEY in Render Environment Variables."
             )
         )
 
     # --------------------------------------------------------
-    # Get uploaded paper context
+    # GET UPLOADED PAPER CONTEXT
     # --------------------------------------------------------
 
     paper_context = get_all_paper_text()
@@ -714,23 +739,20 @@ async def assistant(
         }
 
     # --------------------------------------------------------
-    # Prevent extremely large prompts
+    # LIMIT CONTEXT SIZE
     # --------------------------------------------------------
 
     MAX_CONTEXT_CHARS = 100000
 
     if len(paper_context) > MAX_CONTEXT_CHARS:
 
-        paper_context = paper_context[
-            :MAX_CONTEXT_CHARS
-        ]
-
-        paper_context += (
-            "\n\n[Paper context truncated due to size.]"
+        paper_context = (
+            paper_context[:MAX_CONTEXT_CHARS]
+            + "\n\n[Paper context truncated due to size.]"
         )
 
     # --------------------------------------------------------
-    # Detect summary request
+    # DETECT SUMMARY REQUEST
     # --------------------------------------------------------
 
     lower_question = question.lower()
@@ -738,19 +760,12 @@ async def assistant(
     summary_words = [
 
         "summarize",
-
         "summarise",
-
         "summary",
-
         "main findings",
-
         "key findings",
-
         "findings",
-
         "overview",
-
         "across these studies"
     ]
 
@@ -760,7 +775,7 @@ async def assistant(
     )
 
     # --------------------------------------------------------
-    # Create RAG prompt
+    # TASK INSTRUCTION
     # --------------------------------------------------------
 
     if is_summary_request:
@@ -797,16 +812,20 @@ say so clearly instead of inventing information.
 Where useful, mention which paper or section supports the answer.
 """
 
+    # --------------------------------------------------------
+    # CREATE RAG PROMPT
+    # --------------------------------------------------------
+
     prompt = f"""
 You are MedResearch, a medical research RAG assistant.
 
-You are answering questions about uploaded research papers.
+You answer questions about uploaded research papers.
 
 IMPORTANT RULES:
 
 - Use the provided research-paper context.
 - Do not invent information.
-- Do not pretend that information exists in the papers
+- Do not pretend information exists in the papers
   if it does not.
 - Clearly identify uncertainty.
 - Do not provide personal medical diagnosis.
@@ -832,7 +851,7 @@ END OF RESEARCH PAPER CONTEXT
 """
 
     # --------------------------------------------------------
-    # Send to Gemini
+    # SEND REQUEST TO GEMINI
     # --------------------------------------------------------
 
     try:
@@ -860,7 +879,10 @@ END OF RESEARCH PAPER CONTEXT
                 "Gemini returned an empty response."
             )
 
-        # Count papers
+        # ----------------------------------------------------
+        # COUNT PAPERS
+        # ----------------------------------------------------
+
         paper_count = len(
             list(
                 PAPER_DIR.glob("*.txt")
@@ -906,6 +928,20 @@ async def chat(
 
 
 # ============================================================
+# ASK ALIAS
+# ============================================================
+# This is useful if your frontend calls /api/ask
+# instead of /api/assistant.
+
+@app.post("/api/ask")
+async def ask(
+    request: AssistantRequest
+):
+
+    return await assistant(request)
+
+
+# ============================================================
 # AI ASSISTANT GET TEST
 # ============================================================
 
@@ -920,59 +956,33 @@ def assistant_get():
             "AI Assistant endpoint is working."
         ),
 
-        "method": "POST",
+        "model": GEMINI_MODEL,
 
-        "endpoint": "/api/assistant"
+        "gemini_configured": client is not None
     }
 
 
 # ============================================================
-# STARTUP
+# STARTUP MESSAGE
 # ============================================================
 
 @app.on_event("startup")
 async def startup_event():
 
-    print("")
     print("=" * 60)
-
-    print(
-        "Medical RAG Research Assistant Backend"
-    )
-
+    print("Medical RAG Research Assistant Backend")
     print("=" * 60)
-
+    print("Backend started successfully.")
     print(
-        f"Upload directory: {UPLOAD_DIR}"
+        "Gemini configured:",
+        client is not None
     )
-
     print(
-        f"Paper directory:  {PAPER_DIR}"
+        "Gemini model:",
+        GEMINI_MODEL
     )
-
     print(
-        f"Gemini enabled:   {client is not None}"
+        "CORS frontend:",
+        "https://medical-rag-assistant-green.vercel.app"
     )
-
-    print(
-        f"Gemini model:     {GEMINI_MODEL}"
-    )
-
-    existing_papers = list(
-        UPLOAD_DIR.glob("*.pdf")
-    )
-
-    existing_text = list(
-        PAPER_DIR.glob("*.txt")
-    )
-
-    print(
-        f"PDF papers:       {len(existing_papers)}"
-    )
-
-    print(
-        f"Processed papers: {len(existing_text)}"
-    )
-
     print("=" * 60)
-    print("")
