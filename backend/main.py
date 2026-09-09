@@ -986,3 +986,4 @@ async def startup_event():
         "https://medical-rag-assistant-green.vercel.app"
 
     print("=" * 60)
+    )
